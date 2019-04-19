@@ -34,12 +34,12 @@ class Card(Base):
     card_value_list = ['A','K','Q','J','10','9','8','7','6','5','4','3','2',]
     special_value_list = ['Mighty', 'Joker']
     CARD_VALUE_CHOICES = Choices(*(card_value_list + special_value_list))
-    value = django_models.CharField(max_length=10, choices=CARD_VALUE_CHOICES, db_index=True, db_index=True)
+    value = django_models.CharField(max_length=10, choices=CARD_VALUE_CHOICES, db_index=True)
 
     card_int_value_list = [14,13,12,11,10,9,8,7,6,5,4,3,2,]
     special_int_value_list = [16,15,1]
     CARD_INT_VALUE_CHOICES = Choices(*(card_int_value_list + special_int_value_list))
-    int_value = django_models.IntegerField(default=0, choices=CARD_INT_VALUE_CHOICES, db_index=True, db_index=True)
+    int_value = django_models.IntegerField(default=0, choices=CARD_INT_VALUE_CHOICES, db_index=True)
 
     card_value_dict = dict(zip(card_int_value_list, card_value_list))
 
