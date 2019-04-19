@@ -1,3 +1,8 @@
 from django.db import models
+from model_utils.models import *
+from model_utils import Choices
 
-# Create your models here.
+
+class Game(TimeFramedModel, StatusModel, TimeStampedModel, SoftDeletableModel):
+    STATUS = Choices('ongoing', 'finished')
+
