@@ -1,6 +1,7 @@
 from django.db import models as django_models
 from model_utils.models import *
 from model_utils import *
+from .utils import *
 
 
 class Base(TimeFramedModel, StatusModel, TimeStampedModel, SoftDeletableModel):
@@ -13,11 +14,11 @@ class Turn(Base):
 
     STATUS = Choices('ready', 'thinking', 'over',)
 
-    position_list = [0,1,2,3,4,]
-    POSITION_CHOICES = Choices(0,1,2,3,4,)
+    position_list = list(range(NumUtils.players_number))
+    POSITION_CHOICES = Choices(*position_list)
     position = django_models.IntegerField(default=0, choices=POSITION_CHOICES, db_index=True)
 
-    turn_number_list = [0,1,2,3,4,]
+    turn_number_list = list(range(NumUtils.players_number))
     NUMBER_CHOICES = Choices(*turn_number_list)
     number = django_models.IntegerField(default=0, choices=NUMBER_CHOICES, null=True, db_index=True)
 
@@ -56,6 +57,15 @@ class Card(Base):
     is_joker_call = django_models.BooleanField(default=False, db_index=True)
     is_kiruda = django_models.BooleanField(default=False, db_index=True)
 
+    def player_setter(self, player):
+        if player is None:
+            return 'Error'
+
+        self.player = player
+        self.save()
+
+        return self
+
 
 class Player(Base):
     tracker = FieldTracker()
@@ -66,6 +76,14 @@ class Player(Base):
     position = django_models.IntegerField(default=0, choices=POSITION_CHOICES, db_index=True)
 
     game = django_models.ForeignKey('Game', on_delete=django_models.CASCADE, null=True, db_index=True)
+
+    def cards_setter(self, card_id_list):
+        if self.status != self.STATUS.in_election:
+            return 'Error'
+
+        [Card.objects.get(pk=card_id).player_setter(self) for card_id in card_id_list]
+
+        return self
 
 
 class Declaration(Base):
@@ -80,7 +98,7 @@ class Declaration(Base):
     suit = django_models.CharField(max_length=10, choices=DECLARATION_SUIT_CHOICES, db_index=True)
 
     declaration_value_list = [20,19,18,17,16,15,14,13,]
-    DECLARATION_VALUE_CHOICES = [12,] + declaration_value_list
+    DECLARATION_VALUE_CHOICES = Choices(*([12,] + declaration_value_list))
     value = django_models.IntegerField(default=13, choices=DECLARATION_VALUE_CHOICES, db_index=True)
 
     is_successful = django_models.BooleanField(default=False, db_index=True)
@@ -94,7 +112,7 @@ class Cycle(Base):
     POSITION_CHOICES = Choices(*Turn.position_list)
     first = django_models.IntegerField(default=0, choices=POSITION_CHOICES, null=True, db_index=True)
 
-    cycle_number_list = [0,1,2,3,4,5,6,7,8,9,]
+    cycle_number_list = list(range(53 // NumUtils.players_number))
     NUMBER_CHOICES = Choices(*cycle_number_list)
     number = django_models.IntegerField(default=0, choices=NUMBER_CHOICES, db_index=True)
 
@@ -104,17 +122,19 @@ class Cycle(Base):
 class Game(Base):
     tracker = FieldTracker()
 
-    STATUS = Choices('ongoing', 'finished',)
+    STATUS = Choices('in_election', 'in_declarer', 'in_cycle', 'finished',)
 
     @classmethod
     def start(cls, user_list=None):
         if user_list is None or len(user_list) != 5:
             return 'Error'
+
         cls_instance = cls()
-        cls_instance.status = cls.STATUS.ongoing
         cls_instance.save()
 
         cls_instance.create_data(user_list)
+
+        cls_instance.shuffle_cards()
 
         return cls_instance
 
@@ -135,7 +155,7 @@ class Game(Base):
 
     def create_cards(self):
         [Card.objects.create(value=value, int_value=int_value, suit=suit, game=self) for int_value, value in Card.card_value_dict.items() for suit in Card.card_suit_list]
-        Card.objects.create(value=Card.CARD_VALUE_CHOICES.Joker, int_value=15, suit=Card.CARD_SUIT_CHOICES.Joker, is_joker=True)
+        Card.objects.create(value=Card.CARD_VALUE_CHOICES.Joker, int_value=15, suit=Card.CARD_SUIT_CHOICES.Joker, game=self, is_joker=True)
 
         return self.card_set.all()
 
@@ -154,3 +174,28 @@ class Game(Base):
         successful_declaration = self.declaration_set.filter(is_successful=True)
         if successful_declaration.count() == 1:
             return successful_declaration.first().suit
+
+    def shuffle_cards_getter(self):
+        if self.status != self.STATUS.in_election:
+            return 'Error'
+
+        arr = list(self.card_set.values_list('id',flat=True))
+        np.random.shuffle(arr)
+        arr_only_in_election = np.array(arr[:50]).reshape((5,10))
+
+        return [list(a) for a in arr_only_in_election]
+
+    def shuffle_cards_setter(self, list_of_card_id_list):
+        if self.status != self.STATUS.in_election:
+            return 'Error'
+
+        [self.player_set.get(position=position).cards_setter(list_of_card_id_list[position]) for position in range(NumUtils.players_number)]
+
+        return self
+
+    def shuffle_cards(self):
+        lst = self.shuffle_cards_getter()
+        self.shuffle_cards_setter(lst)
+
+        return self
+
