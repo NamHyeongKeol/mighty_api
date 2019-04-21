@@ -54,9 +54,11 @@ class Card(Base):
     is_mighty = django_models.BooleanField(default=False, db_index=True)
     is_joker = django_models.BooleanField(default=False, db_index=True)
     is_joker_call = django_models.BooleanField(default=False, db_index=True)
+    is_kiruda = django_models.BooleanField(default=False, db_index=True)
 
 
 class Player(Base):
+    tracker = FieldTracker()
     STATUS = Choices('in_election', 'declarer', 'friend', 'defenders', 'finished',)
     name = django_models.CharField(max_length=200, default='bot', db_index=True)
 
@@ -64,6 +66,24 @@ class Player(Base):
     position = django_models.IntegerField(default=0, choices=POSITION_CHOICES, db_index=True)
 
     game = django_models.ForeignKey('Game', on_delete=django_models.CASCADE, null=True, db_index=True)
+
+
+class Declaration(Base):
+    tracker = FieldTracker()
+    STATUS = Choices('pass', 'declaration',)
+
+    game = django_models.ForeignKey('Game', on_delete=django_models.CASCADE, null=True, db_index=True)
+    player = django_models.ForeignKey('Player', on_delete=django_models.CASCADE, null=True, db_index=True)
+
+    declaration_suit_list = ['nokiru'] + Card.card_suit_list
+    DECLARATION_SUIT_CHOICES = Choices(*declaration_suit_list)
+    suit = django_models.CharField(max_length=10, choices=DECLARATION_SUIT_CHOICES, db_index=True)
+
+    declaration_value_list = [20,19,18,17,16,15,14,13,]
+    DECLARATION_VALUE_CHOICES = [12,] + declaration_value_list
+    value = django_models.IntegerField(default=13, choices=DECLARATION_VALUE_CHOICES, db_index=True)
+
+    is_successful = django_models.BooleanField(default=False, db_index=True)
 
 
 class Cycle(Base):
@@ -129,3 +149,8 @@ class Game(Base):
 
         return Turn.objects.filter(id__in=[turn.id for turn in turn_list])
 
+    @property
+    def kiruda(self):
+        successful_declaration = self.declaration_set.filter(is_successful=True)
+        if successful_declaration.count() == 1:
+            return successful_declaration.first().suit
