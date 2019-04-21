@@ -46,7 +46,7 @@ class Card(Base):
     card_suit_list = ['spade', 'diamond', 'clover', 'heart',]
     special_suit_list = ['Joker']
     CARD_SUIT_CHOICES = Choices(*(card_suit_list + special_suit_list))
-    suit = django_models.CharField(default=0, choices=CARD_SUIT_CHOICES, db_index=True)
+    suit = django_models.CharField(max_length=10, choices=CARD_SUIT_CHOICES, db_index=True)
 
     player = django_models.ForeignKey('Player', on_delete=django_models.CASCADE, null=True, db_index=True)
     game = django_models.ForeignKey('Game', on_delete=django_models.CASCADE, null=True, db_index=True)
