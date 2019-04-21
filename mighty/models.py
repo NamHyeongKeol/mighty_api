@@ -53,6 +53,7 @@ class Card(Base):
 
     is_mighty = django_models.BooleanField(default=False, db_index=True)
     is_joker = django_models.BooleanField(default=False, db_index=True)
+    is_joker_call = django_models.BooleanField(default=False, db_index=True)
 
 
 class Player(Base):
@@ -93,6 +94,7 @@ class Game(Base):
         cls_instance.status = cls.STATUS.ongoing
 
         cls_instance.create_data(user_list)
+        cls_instance.save()
 
         return cls_instance
 
