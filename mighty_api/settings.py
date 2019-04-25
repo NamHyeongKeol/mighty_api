@@ -122,4 +122,3 @@ USE_TZ = True
 STATIC_URL = '/static/'
 
 SHELL_PLUS = "ipython"
-

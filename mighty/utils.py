@@ -1,4 +1,2 @@
-
-
 class NumUtils:
-	players_number = 5
+    players_number = 5
