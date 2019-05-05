@@ -93,7 +93,8 @@ class Player(Base):
         if self.status != self.STATUS.in_election:
             return 'Error'
 
-        [Card.objects.get(pk=card_id).player_setter(self) for card_id in card_id_list]
+        for card_id in card_id_list:
+            Card.objects.get(pk=card_id).player_setter(self)
 
         return self
 
